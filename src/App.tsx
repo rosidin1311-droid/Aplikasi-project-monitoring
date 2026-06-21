@@ -8,6 +8,7 @@ import DashboardTab from './components/DashboardTab';
 import InputProduksiTab from './components/InputProduksiTab';
 import MasterDataTab from './components/MasterDataTab';
 import GoogleSheetsSync from './components/GoogleSheetsSync';
+// @ts-ignore
 import logoImg from './assets/images/logo_produksi_1781996851386.jpg';
 
 export default function App() {
