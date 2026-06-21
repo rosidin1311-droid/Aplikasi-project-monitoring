@@ -1,8 +1,21 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+import firebaseConfigDefault from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
+const getFirebaseConfig = () => {
+  const custom = localStorage.getItem('custom_firebase_config');
+  if (custom) {
+    try {
+      return JSON.parse(custom);
+    } catch (e) {
+      console.error('Failed to parse custom firebase config:', e);
+    }
+  }
+  return firebaseConfigDefault;
+};
+
+const activeConfig = getFirebaseConfig();
+const app = getApps().length === 0 ? initializeApp(activeConfig) : getApp();
 export const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();

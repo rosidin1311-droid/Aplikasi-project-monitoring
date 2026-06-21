@@ -28,6 +28,8 @@ export default function GoogleSheetsSync({
   const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'searching' | 'creating' | 'syncing' | 'connected' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showCustomFirebase, setShowCustomFirebase] = useState(false);
+  const [customConfigJson, setCustomConfigJson] = useState(localStorage.getItem('custom_firebase_config') || '');
 
   // Initialize auth state
   useEffect(() => {
@@ -100,10 +102,51 @@ export default function GoogleSheetsSync({
         await loadSpreadsheetDetails(result.accessToken);
       }
     } catch (err: any) {
-      console.error(err);
-      setErrorMsg('Gagal masuk Google. Pastikan izin popup diberikan.');
+      console.error('Sign in error detail:', err);
+      if (err.code === 'auth/unauthorized-domain') {
+        setErrorMsg(
+          `Domain ini (${window.location.hostname}) tidak diizinkan oleh proyek Firebase default. ` +
+          `Langkah perbaikan:\n` +
+          `1. Jika Anda meng-host di Vercel/GitHub Pages, mendaftarkan "${window.location.hostname}" ke "Authorized Domains" di Firebase Console proyek Anda.\n` +
+          `2. Atau gunakan opsi "Pengaturan Advanced" di bawah untuk memasukkan konfigurasi Firebase milik Anda sendiri.`
+        );
+      } else if (err.code === 'auth/popup-blocked') {
+        setErrorMsg('Jendela masuk (popup) diblokir oleh browser. Harap izinkan popup di browser Anda dan coba lagi.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setErrorMsg('Proses masuk dibatalkan karena jendela login ditutup.');
+      } else {
+        setErrorMsg(`Gagal masuk Google: ${err.message || 'Error tidak diketahui'}. Pastikan koneksi internet lancar dan periksa konfigurasi domain Anda.`);
+      }
       setStatus('error');
     }
+  };
+
+  const handleSaveCustomConfig = () => {
+    try {
+      if (!customConfigJson.trim()) {
+        localStorage.removeItem('custom_firebase_config');
+        alert('Menggunakan kembali konfigurasi default AI Studio. Halaman akan dimuat ulang.');
+        window.location.reload();
+        return;
+      }
+      const parsed = JSON.parse(customConfigJson);
+      if (!parsed.apiKey || !parsed.authDomain || !parsed.projectId) {
+        alert('Format salah! Pastikan JSON konfigurasi Firebase memiliki minimal "apiKey", "authDomain", dan "projectId".');
+        return;
+      }
+      localStorage.setItem('custom_firebase_config', JSON.stringify(parsed, null, 2));
+      alert('Konfigurasi Firebase kustom berhasil disimpan. Halaman akan dijalankan ulang untuk menerapkan perubahan.');
+      window.location.reload();
+    } catch (e) {
+      alert('Format JSON tidak valid! Silakan periksa kembali tanda koma atau tanda petik dua yang Anda gunakan.');
+    }
+  };
+
+  const handleResetCustomConfig = () => {
+    localStorage.removeItem('custom_firebase_config');
+    setCustomConfigJson('');
+    alert('Konfigurasi dibatalkan kembali ke bawaan AI Studio. Halaman akan dimuat ulang.');
+    window.location.reload();
   };
 
   const handleCreateSheet = async () => {
@@ -194,6 +237,57 @@ export default function GoogleSheetsSync({
             </svg>
             <span>Hubungkan Google Sheets</span>
           </button>
+
+          <div className="mt-5 pt-4 border-t border-natural-100">
+            <button
+              onClick={() => setShowCustomFirebase(!showCustomFirebase)}
+              className="text-xs text-leaf-600 hover:text-leaf-700 font-semibold flex items-center gap-1 transition"
+            >
+              {showCustomFirebase ? 'Sembunyikan Pengaturan Advanced' : 'Hosting di Vercel / GitHub Pages? (Pengaturan Advanced)'}
+            </button>
+
+            {showCustomFirebase && (
+              <div className="mt-3 bg-natural-50 rounded-xl p-3.5 border border-natural-200 lg:p-4 space-y-3">
+                <p className="text-[11px] text-natural-600 leading-relaxed">
+                  Jika Anda menggunakan Vercel atau GitHub Pages, Google Sign-In bawaan AI Studio akan terblokir oleh Google/Firebase karena domain Anda berbeda dengan domain sandbox kami.
+                </p>
+                
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-2.5 rounded-lg text-[10px] leading-relaxed">
+                  <strong>Solusi:</strong> Tambahkan domain <code>{window.location.hostname}</code> di halaman <strong>Authorized Domains</strong> Firebase Console proyek Anda, ATAU tempel Web SDK Config milik Firebase Anda sendiri di bawah:
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-natural-700 uppercase mb-1">
+                    Konfigurasi Firebase Web SDK (JSON)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={customConfigJson}
+                    onChange={(e) => setCustomConfigJson(e.target.value)}
+                    placeholder={`{\n  "apiKey": "...",\n  "authDomain": "...",\n  "projectId": "..."\n}`}
+                    className="w-full text-[10px] font-mono bg-white border border-natural-300 rounded-lg p-2 focus:ring-1 focus:ring-leaf-500 focus:border-leaf-500"
+                  />
+                </div>
+
+                <div className="flex gap-2 text-[11px]">
+                  <button
+                    onClick={handleSaveCustomConfig}
+                    className="bg-leaf-600 hover:bg-leaf-700 text-white font-semibold px-3 py-1.5 rounded-lg transition"
+                  >
+                    Simpan & Reload
+                  </button>
+                  {localStorage.getItem('custom_firebase_config') && (
+                    <button
+                      onClick={handleResetCustomConfig}
+                      className="bg-stone-200 hover:bg-stone-300 text-stone-700 font-semibold px-3 py-1.5 rounded-lg transition"
+                    >
+                      Reset Default
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
