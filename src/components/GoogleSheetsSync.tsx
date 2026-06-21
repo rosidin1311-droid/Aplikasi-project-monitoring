@@ -82,8 +82,67 @@ export default function GoogleSheetsSync({
         setStatus('idle');
       }
     } catch (err: any) {
-      console.error(err);
-      setErrorMsg('Gagal memindai Google Drive. Silakan coba masuk kembali.');
+      console.error("Google Drive scanning error:", err);
+      
+      let rawMsg = err.message || '';
+      let parsedGoogleError = '';
+      let isApiDisabled = false;
+      let projectId = 'aplikasi-monitoring-af88a';
+      
+      try {
+        const custom = localStorage.getItem('custom_firebase_config');
+        if (custom) {
+          const parsed = JSON.parse(custom);
+          if (parsed && parsed.projectId) {
+            projectId = parsed.projectId;
+          }
+        }
+      } catch (e) {}
+
+      // Safe parse if message is JSON from Google API
+      if (typeof rawMsg === 'string' && rawMsg.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(rawMsg);
+          if (parsed && parsed.error) {
+            parsedGoogleError = parsed.error.message || '';
+          }
+        } catch (_) {}
+      }
+
+      const checkStr = (parsedGoogleError || rawMsg || '').toLowerCase();
+      
+      if (
+        checkStr.includes('has not been used') || 
+        checkStr.includes('disabled') || 
+        checkStr.includes('api_key_invalid') || 
+        checkStr.includes('permission_denied') || 
+        checkStr.includes('restricted') ||
+        checkStr.includes('not enabled')
+      ) {
+        isApiDisabled = true;
+      }
+
+      let consoleUrl = `https://console.cloud.google.com/apis/library?project=${projectId}`;
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const foundUrls = checkStr.match(urlRegex);
+      if (foundUrls && foundUrls.length > 0) {
+        consoleUrl = foundUrls[0].replace(/[.,);'"]+$/, ''); // clean trailing chars
+      }
+
+      if (isApiDisabled) {
+        setErrorMsg(
+          `API Google Drive / Sheets belum diaktifkan pada proyek Firebase kustom Anda di Google Cloud.\n\n` +
+          `Detail Error:\n${parsedGoogleError || rawMsg}\n\n` +
+          `🔴 CARA MEMPERBAIKI:\n` +
+          `1. Buka halaman pengaturan Google Cloud Console Anda.\n` +
+          `2. Anda harus mencari dan mengaktifkan "Google Drive API" serta "Google Sheets API" secara manual.`
+        );
+      } else {
+        setErrorMsg(
+          `Gagal memindai Google Drive. Detail error:\n${parsedGoogleError || rawMsg || 'Pemeriksaan akses gagal.'}\n\n` +
+          `Harap pastikan izin Google Drive and Sheets telah diaktifkan di Console Firebase/GCP Anda.`
+        );
+      }
       setStatus('error');
     }
   };
@@ -372,9 +431,57 @@ export default function GoogleSheetsSync({
           )}
 
           {errorMsg && (
-            <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-100 p-3 rounded-xl text-xs mt-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
+            <div className="flex flex-col gap-2.5 text-stone-800 bg-red-50/75 border border-red-200 p-4 rounded-xl text-xs mt-2 leading-relaxed whitespace-pre-line">
+              <div className="flex items-center gap-2 font-bold text-red-700 border-b border-red-100 pb-1.5 mb-1">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <span>Integrasi Google Sheets Terkendala</span>
+              </div>
+              
+              <div className="text-stone-700 text-[11px] font-medium font-sans">
+                {errorMsg}
+              </div>
+
+              {/* Quick resolution helper buttons if API is probably disabled or custom domain */}
+              {(errorMsg.toLowerCase().includes('api') || errorMsg.toLowerCase().includes('google-apps') || errorMsg.toLowerCase().includes('drive') || errorMsg.toLowerCase().includes('sheet')) && (
+                <div className="mt-2 space-y-2 border-t border-red-100 pt-2.5">
+                  <p className="font-semibold text-red-800 text-[10px] uppercase tracking-wider">Langkah Cepat Perbaikan:</p>
+                  
+                  <div className="flex flex-col gap-1.5">
+                    <a
+                      href={`https://console.cloud.google.com/apis/library/drive.googleapis.com?project=${JSON.parse(localStorage.getItem('custom_firebase_config') || '{}').projectId || 'aplikasi-monitoring-af88a'}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-natural-50 border border-red-300 rounded-lg p-2.5 text-xs font-semibold text-rose-700 shadow-sm transition"
+                    >
+                      🚀 1. Klik Aktifkan Google Drive API
+                    </a>
+                    
+                    <a
+                      href={`https://console.cloud.google.com/apis/library/sheets.googleapis.com?project=${JSON.parse(localStorage.getItem('custom_firebase_config') || '{}').projectId || 'aplikasi-monitoring-af88a'}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-natural-50 border border-red-300 rounded-lg p-2.5 text-xs font-semibold text-emerald-700 shadow-sm transition"
+                    >
+                      🚀 2. Klik Aktifkan Google Sheets API
+                    </a>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const t = token || localStorage.getItem('sheets_token');
+                      if (t) {
+                        loadSpreadsheetDetails(t);
+                      } else {
+                        handleSignIn();
+                      }
+                    }}
+                    className="w-full mt-1 bg-leaf-600 hover:bg-leaf-700 text-white font-semibold rounded-lg py-2.5 text-xs transition active:scale-[0.98]"
+                  >
+                    🔄 Sudah Aktif? Klik Coba Hubungkan Kembali
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
