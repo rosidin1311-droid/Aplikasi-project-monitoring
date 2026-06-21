@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Clean Minimalism custom Warm Paper and Sage Green colors */
+  --color-natural-50: #F4F1EA;   /* soft Warm Paper beige background */
+  --color-natural-100: #F9F8F4;  /* light ivory paper highlight */
+  --color-natural-200: #E0DBCF;  /* clay sand border */
+  --color-natural-300: #C2BAA6;  /* stone gray element outline */
+  --color-natural-650: #8B8878;  /* minimalist secondary text */
+  --color-natural-600: #8B8878;  /* secondary text bark */
+  --color-natural-700: #5B6346;  /* elegant sage accent */
+  --color-natural-800: #2D3025;  /* deep woodland dark gray */
+  --color-natural-900: #2D3025;  /* deep charcoal body text */
+
+  --color-leaf-50: #F9F8F4;    /* morning fresh cream */
+  --color-leaf-100: #E6EADF;   /* beautiful morning moss accent tag */
+  --color-leaf-500: #5B6346;   /* master minimalist sage green */
+  --color-leaf-600: #5B6346;   /* brand solid sage green */
+  --color-leaf-700: #464C35;   /* deep forest shade */
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-natural-50);
+  color: var(--color-natural-800);
+}

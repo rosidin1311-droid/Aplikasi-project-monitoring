@@ -1,0 +1,6 @@
+{
+  "name": "Monitoring Produksi",
+  "description": "Aplikasi monitoring produksi dengan master data, input produksi per shift, dan sinkronisasi Google Sheets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
